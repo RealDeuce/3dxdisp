@@ -12,9 +12,7 @@ project, but it's also useful as a standalone library, to write interesting
 programs that use the otherwise pointless LCD for desktop notifications,
 time/date, system monitoring, etc.
 
-Currently 3dxdisp only works on GNU/Linux systems. But since it relies on
-hidapi, it should be easily portable to MacOS X and Windows, by just dropping
-the necessary source files from the hidapi code, and tweaking the Makefile.
+Currently 3dxdisp only works on FreeBSD systems.
 
 License
 -------
@@ -25,13 +23,16 @@ under the terms of the MIT/X11 license. See LICENSE for details.
 
 Build
 -----
-The only dependency is libudev (required by the GNU/Linux implementation of
-HIDAPI). After you have install libudev, just type make to build the library,
-and then change into example/ and type make to build the example program.
-
 To be able to run the example program, or your own 3dxdisp programs, as an
-unpriviledged user, the space pilot hidraw device must have the appropriate
-permissions. The best way to do that, is to add a new file `3dxdisp.rules` to
-`/etc/udev/rules.d/` with the following contents:
+unpriviledged user, the space pilot uhid device must have the appropriate
+permissions. The best way to do that, is to add a new file in `/etc/devd/`
+or `/usr/local/etc/devd/` with the following contents:
 
-    KERNEL=="hidraw[0-9]*", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c625", MODE="0666"
+notify 200 {
+        match "system"          "USB";
+        match "subsystem"       "DEVICE";
+        match "type"            "ATTACH";
+        match "vendor"          "0x046d";
+        match "product"         "0xc625";
+        action "bin/chmod 0666 /dev/$cdev";
+};

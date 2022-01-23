@@ -1,12 +1,13 @@
-src = $(wildcard src/*.c)
-obj = $(src:.c=.o)
+obj = src/example.o
 bin = example
 
-CFLAGS = -pedantic -Wall -g -I../src
-LDFLAGS = ../lib3dxdisp.a -ludev
+CFLAGS += -I../src
+LDFLAGS += ../lib3dxdisp.a -lusbhid
 
 $(bin): $(obj) ../lib3dxdisp.a
-	$(CC) -o $@ $(obj) $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ $(obj) $(LDFLAGS)
+
+src/example.o: src/logo.h
 
 .PHONY: clean
 clean:

@@ -7,12 +7,18 @@ it under the terms of the MIT/X11 license. See LICENSE for details.
 If you intend to redistribute parts of the code without the LICENSE file
 replace this paragraph with the full contents of the LICENSE file.
 */
+#include <sys/ioctl.h>
+#include <dev/usb/usb_ioctl.h>
+#include <fcntl.h>
+#include <glob.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <stdbool.h>
+#include <usbhid.h>
+#include <unistd.h>
 #include "3dxdisp.h"
-#include "hidapi/hidapi.h"
 
 #define SPILOT_VID	0x046d
 #define SPILOT_PID	0xc625
@@ -33,26 +39,49 @@ static int set_start_pos(int row, int col);
 static int send_unpacked(const unsigned char *data);
 static int send_packed(uint32_t pat, uint32_t counts);
 
-static hid_device *hid;
+static int hid = -1;
 static unsigned char fb[FBSIZE];
 
 int tdx_open(void)
 {
+	glob_t gl;
+	int i;
+
 	tdx_close();
 
-	if(!(hid = hid_open(SPILOT_VID, SPILOT_PID, 0))) {
-		fprintf(stderr, "tdx_open: failed to open space pilot HID device\n");
+	memset(&gl, 0, sizeof(gl));
+	if (glob("/dev/uhid*", GLOB_MARK, NULL, &gl)) {
+		fprintf(stderr, "tdx_open: failed to enumerate /dev/uhid*\n");
 		return -1;
 	}
-	hid_set_nonblocking(hid, 1);
+	for (i = 0; i < gl.gl_matchc; i++) {
+		hid = open(gl.gl_pathv[i], O_RDWR|O_NONBLOCK);
+		if (hid != -1) {
+			struct usb_device_info ui;
+			if (ioctl(hid, USB_GET_DEVICEINFO, &ui) != -1) {
+				if (ui.udi_vendorNo != SPILOT_VID || ui.udi_productNo != SPILOT_PID) {
+					close(hid);
+					hid = -1;
+				}
+				else
+					break;
+			}
+		}
+	}
+	globfree(&gl);
+	if (hid == -1) {
+		fprintf(stderr, "tdx_open: failed to locate device\n");
+		return -1;
+	}
 
 	return 0;
 }
 
 void tdx_close(void)
 {
-	if(hid) {
-		hid_close(hid);
+	if(hid != -1) {
+		close(hid);
+		hid = -1;
 	}
 }
 
@@ -210,7 +239,7 @@ static int set_start_pos(int row, int col)
 	buf[2] = col;
 	buf[3] = 0;
 
-	if(hid_send_feature_report(hid, buf, 4) == -1) {
+	if(hid_set_report(hid, hid_feature, buf, 4) == -1) {
 		fprintf(stderr, "set_start_pos failed\n");
 		return -1;
 	}
@@ -228,7 +257,7 @@ static int send_unpacked(const unsigned char *data)
 		buf[i] = *data++;
 	}
 
-	if(hid_send_feature_report(hid, buf, 8) == -1) {
+	if(hid_set_report(hid, hid_feature, buf, 8) == -1) {
 		fprintf(stderr, "send_unpacked failed\n");
 		return -1;
 	}
@@ -255,7 +284,7 @@ static int send_packed(uint32_t pat, uint32_t counts)
 		pat >>= 8;
 	}
 
-	if(hid_send_feature_report(hid, buf, nbytes) == -1) {
+	if(hid_set_report(hid, hid_feature, buf, nbytes) == -1) {
 		fprintf(stderr, "send_packed failed\n");
 		return -1;
 	}
