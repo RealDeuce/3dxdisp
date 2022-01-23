@@ -12,7 +12,7 @@ replace this paragraph with the full contents of the LICENSE file.
 #include <string.h>
 #include <stdint.h>
 #include "3dxdisp.h"
-#include "hidapi/hidapi.h"
+#include "hidapi.h"
 
 #define SPILOT_VID	0x046d
 #define SPILOT_PID	0xc625

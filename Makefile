@@ -4,8 +4,8 @@ dep = $(obj:.o=.d)
 
 liba = lib3dxdisp.a
 
-CFLAGS = -pedantic -Wall -g
-LDFLAGS = -ludev
+CFLAGS = -pedantic -Wall -g `pkgconf --cflags hidapi`
+LDFLAGS = -ludev `pkgconf --libs hidapi`
 
 $(liba): $(obj)
 	$(AR) rcs $@ $(obj)

@@ -3,7 +3,7 @@ obj = $(src:.c=.o)
 bin = example
 
 CFLAGS = -pedantic -Wall -g -I../src
-LDFLAGS = ../lib3dxdisp.a -ludev
+LDFLAGS = ../lib3dxdisp.a `pkgconf --libs hidapi`
 
 $(bin): $(obj) ../lib3dxdisp.a
 	$(CC) -o $@ $(obj) $(LDFLAGS)
